@@ -27,54 +27,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Error fetching session:', error);
-        setIsLoading(false);
-        return;
-      }
-      
-      if (data?.session) {
-        setSession(data.session);
-        setUser(data.session.user);
+  // Function to fetch the user's profile from Supabase
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
         
-        // Fetch user profile
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.session.user.id)
-          .single();
-          
-        if (profileData) {
-          setProfile(profileData as Profile);
-        }
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
       }
       
-      setIsLoading(false);
+      return data as Profile;
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Get the current session
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data?.session) {
+          setSession(data.session);
+          setUser(data.session.user);
+          
+          // Fetch user profile
+          const profileData = await fetchProfile(data.session.user.id);
+          setProfile(profileData);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        toast.error('Authentication error. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    fetchSession();
+    initializeAuth();
 
+    // Subscribe to auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       console.log('Auth state changed:', event);
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
       
-      if (newSession?.user) {
+      if (newSession) {
+        setSession(newSession);
+        setUser(newSession.user);
+        
         // Fetch user profile when auth state changes
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', newSession.user.id)
-          .single();
-          
-        if (profileData) {
-          setProfile(profileData as Profile);
-        }
+        const profileData = await fetchProfile(newSession.user.id);
+        setProfile(profileData);
       } else {
+        setSession(null);
+        setUser(null);
         setProfile(null);
       }
     });
@@ -86,49 +103,79 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (email: string, password: string) => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signUp({ email, password });
-    setIsLoading(false);
-    
-    if (!error) {
-      toast.success('Sign up successful! Please check your email to verify your account.');
+    try {
+      const { error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`
+        }
+      });
+      
+      if (!error) {
+        toast.success('Sign up successful! Please check your email to verify your account.');
+      }
+      
+      return { error };
+    } catch (error) {
+      console.error('Error during sign up:', error);
+      return { error: error as AuthError };
+    } finally {
+      setIsLoading(false);
     }
-    
-    return { error };
   };
 
   const signIn = async (email: string, password: string) => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setIsLoading(false);
-    
-    if (!error) {
-      toast.success('Sign in successful!');
-      navigate('/dashboard');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (!error) {
+        toast.success('Sign in successful!');
+        navigate('/dashboard');
+      }
+      
+      return { error };
+    } catch (error) {
+      console.error('Error during sign in:', error);
+      return { error: error as AuthError };
+    } finally {
+      setIsLoading(false);
     }
-    
-    return { error };
   };
 
   const signInWithGoogle = async () => {
     setIsLoading(true);
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-      }
-    });
-    setIsLoading(false);
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        }
+      });
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+      toast.error('Failed to sign in with Google. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const signOut = async () => {
     setIsLoading(true);
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
-    setIsLoading(false);
-    toast.success('Signed out successfully');
-    navigate('/login');
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      toast.success('Signed out successfully');
+      navigate('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('Failed to sign out. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const isAuthenticated = !!user && !!session;

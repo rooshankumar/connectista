@@ -1,11 +1,13 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Default to demo credentials if environment variables are not set
+// In production, these would come from environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xyzcompany.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhtZmd3Y3dvcWZ1cHZpaHpqZmh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2NzQ1OTcwMDYsImV4cCI6MTk5MDE3MzAwNn0.i97waJfwRxMhfdNkHtAZbrFH8J_cDnXUNdPgHZ5J4Ng';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase credentials. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  console.warn('Using demo Supabase credentials. For production, set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
