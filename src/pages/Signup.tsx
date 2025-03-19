@@ -1,15 +1,18 @@
 
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { SignupForm } from '@/components/auth/SignupForm';
+import { AuthProvider } from '@/hooks/useAuth';
 
 const Signup = () => {
   return (
-    <AuthLayout 
-      title="Create an account"
-      subtitle="Enter your email below to create your account"
-    >
-      <SignupForm />
-    </AuthLayout>
+    <AuthProvider>
+      <AuthLayout 
+        title="Create an account"
+        subtitle="Enter your email below to create your account"
+      >
+        <SignupForm />
+      </AuthLayout>
+    </AuthProvider>
   );
 };
 

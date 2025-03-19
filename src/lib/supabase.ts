@@ -12,6 +12,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     storageKey: 'roshlingua-auth-storage',
+    detectSessionInUrl: true,
+    flowType: 'pkce'
   },
 });
 
