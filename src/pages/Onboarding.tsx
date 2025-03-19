@@ -18,7 +18,8 @@ import {
   User, 
   Globe, 
   CheckCircle,
-  Calendar 
+  Calendar,
+  Loader2
 } from 'lucide-react';
 
 const OnboardingStep = ({ 
