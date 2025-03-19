@@ -7,9 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Camera, Loader2 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 import type { Profile } from '@/lib/supabase';
 
 export function ProfileCard() {
+  const { user } = useAuth();
   const { profile, isLoading, updateProfile, uploadAvatar } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -18,6 +21,18 @@ export function ProfileCard() {
     bio: profile?.bio || '',
     native_language: profile?.native_language || '',
     learning_languages: profile?.learning_languages || [],
+  });
+
+  // Update form data when profile changes
+  useState(() => {
+    if (profile) {
+      setFormData({
+        full_name: profile.full_name || '',
+        bio: profile.bio || '',
+        native_language: profile.native_language || '',
+        learning_languages: profile.learning_languages || [],
+      });
+    }
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -30,22 +45,38 @@ export function ProfileCard() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      alert('Image size should be less than 5MB');
+      toast.error('Image size should be less than 5MB');
       return;
     }
 
     setIsUploading(true);
 
     try {
-      await uploadAvatar(file);
+      const result = await uploadAvatar(file);
+      if (result.error) {
+        throw result.error;
+      }
+      toast.success('Avatar uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast.error(`Failed to upload avatar: ${(error as Error).message}`);
     } finally {
       setIsUploading(false);
     }
   };
 
   const handleSave = async () => {
-    await updateProfile(formData);
-    setIsEditing(false);
+    try {
+      const result = await updateProfile(formData);
+      if (result.error) {
+        throw result.error;
+      }
+      setIsEditing(false);
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error(`Failed to update profile: ${(error as Error).message}`);
+    }
   };
 
   const getInitials = () => {
@@ -56,7 +87,7 @@ export function ProfileCard() {
         .join('')
         .toUpperCase();
     }
-    return '?';
+    return user?.email?.[0].toUpperCase() || '?';
   };
 
   if (isLoading) {
@@ -142,7 +173,7 @@ export function ProfileCard() {
               </div>
             ) : (
               <div>
-                <h2 className="text-2xl font-bold">{profile?.full_name || 'User'}</h2>
+                <h2 className="text-2xl font-bold">{profile?.full_name || user?.email?.split('@')[0] || 'User'}</h2>
                 <p className="text-muted-foreground">
                   {profile?.native_language 
                     ? `Native: ${profile.native_language}` 

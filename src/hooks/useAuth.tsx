@@ -3,7 +3,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { supabase, createRequiredTables } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase';
 
 type AuthContextType = {
@@ -61,9 +61,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', user.id)
         .single();
       
-      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 means no rows returned
-        console.error('Error checking for existing profile:', fetchError);
-        return null;
+      if (fetchError) {
+        if (fetchError.code === '42P01') {
+          // Table doesn't exist, try to create it
+          console.log('Profiles table does not exist, trying to initialize database...');
+          await createRequiredTables();
+          return null;
+        } else if (fetchError.code !== 'PGRST116') { // PGRST116 means no rows returned
+          console.error('Error checking for existing profile:', fetchError);
+          return null;
+        }
       }
       
       // If profile doesn't exist, create it with default values
@@ -76,6 +83,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const newProfile = {
           id: user.id,
           username: defaultUsername,
+          full_name: user.user_metadata?.full_name || '',
+          avatar_url: user.user_metadata?.avatar_url || '',
           onboarding_completed: false,
           created_at: new Date().toISOString(),
         };
@@ -109,6 +118,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       try {
         console.log('Initializing auth and getting session...');
+        // Check and create necessary tables/buckets
+        await createRequiredTables();
+        
         // Get the current session
         const { data, error } = await supabase.auth.getSession();
         
@@ -181,11 +193,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         toast.success('Sign up successful! Please check your email to verify your account.');
       } else {
         console.error('Sign up error:', error);
+        toast.error(`Sign up failed: ${error.message}`);
       }
       
       return { error };
     } catch (error) {
       console.error('Error during sign up:', error);
+      toast.error(`Sign up failed: ${(error as Error).message}`);
       return { error: error as AuthError };
     } finally {
       setIsLoading(false);
@@ -204,11 +218,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         navigate('/dashboard');
       } else {
         console.error('Sign in error:', error);
+        toast.error(`Sign in failed: ${error.message}`);
       }
       
       return { error };
     } catch (error) {
       console.error('Error during sign in:', error);
+      toast.error(`Sign in failed: ${(error as Error).message}`);
       return { error: error as AuthError };
     } finally {
       setIsLoading(false);

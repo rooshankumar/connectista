@@ -18,6 +18,8 @@ export const useProfile = () => {
     setIsLoading(true);
 
     try {
+      console.log('Updating profile for user:', user.id, 'with data:', updates);
+      
       const { error } = await supabase
         .from('profiles')
         .update(updates)
@@ -29,7 +31,7 @@ export const useProfile = () => {
       return { error: null };
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
+      toast.error(`Failed to update profile: ${(error as Error).message}`);
       return { error };
     } finally {
       setIsLoading(false);
@@ -45,6 +47,26 @@ export const useProfile = () => {
     setIsLoading(true);
 
     try {
+      console.log('Uploading avatar for user:', user.id);
+      
+      // Check if storage is available
+      try {
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const profilesBucketExists = buckets?.some(bucket => bucket.name === 'profiles');
+        
+        if (!profilesBucketExists) {
+          console.log('Creating profiles storage bucket...');
+          await supabase.storage.createBucket('profiles', {
+            public: true,
+            fileSizeLimit: 5242880, // 5MB
+          });
+          console.log('Profiles bucket created successfully');
+        }
+      } catch (storageError) {
+        console.error('Error with storage buckets:', storageError);
+        throw new Error(`Storage error: ${(storageError as Error).message}`);
+      }
+      
       const fileExt = file.name.split('.').pop();
       const filePath = `avatars/${user.id}.${fileExt}`;
 
@@ -64,7 +86,7 @@ export const useProfile = () => {
       return { error: null, url: data.publicUrl };
     } catch (error) {
       console.error('Error uploading avatar:', error);
-      toast.error('Failed to upload avatar');
+      toast.error(`Failed to upload avatar: ${(error as Error).message}`);
       return { error, url: null };
     } finally {
       setIsLoading(false);
@@ -80,6 +102,8 @@ export const useProfile = () => {
     setIsLoading(true);
 
     try {
+      console.log('Completing onboarding for user:', user.id, 'with data:', profileData);
+      
       const updates = {
         ...profileData,
         onboarding_completed: true,
@@ -96,7 +120,7 @@ export const useProfile = () => {
       return { error: null };
     } catch (error) {
       console.error('Error completing onboarding:', error);
-      toast.error('Failed to complete onboarding');
+      toast.error(`Failed to complete onboarding: ${(error as Error).message}`);
       return { error };
     } finally {
       setIsLoading(false);
