@@ -17,7 +17,8 @@ import {
   Languages, 
   User, 
   Globe, 
-  CheckCircle 
+  CheckCircle,
+  Calendar 
 } from 'lucide-react';
 
 const OnboardingStep = ({ 
@@ -64,8 +65,10 @@ const Onboarding = () => {
     username: '',
     bio: '',
     native_language: '',
-    learning_languages: [],
+    learning_languages: [] as string[],
     avatar_url: '',
+    date_of_birth: '',
+    proficiency_level: '',
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -104,7 +107,12 @@ const Onboarding = () => {
       return;
     }
 
-    if (step < 4) {
+    if (step === 3 && !formData.date_of_birth) {
+      toast.error('Please enter your date of birth');
+      return;
+    }
+
+    if (step < 5) {
       setStep(step + 1);
     }
   };
@@ -117,6 +125,8 @@ const Onboarding = () => {
 
   const handleSubmit = async () => {
     try {
+      toast.info('Saving your profile...');
+      
       // First upload avatar if provided
       if (avatarFile) {
         const { url } = await uploadAvatar(avatarFile);
@@ -154,6 +164,17 @@ const Onboarding = () => {
     'Italian',
   ];
 
+  // Proficiency levels
+  const proficiencyLevels = [
+    'Beginner',
+    'Elementary',
+    'Intermediate',
+    'Upper Intermediate',
+    'Advanced',
+    'Fluent',
+    'Native'
+  ];
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="fixed top-0 right-0 p-4 z-10">
@@ -167,10 +188,10 @@ const Onboarding = () => {
               roshLingua
             </h1>
             <div className="flex justify-center gap-2 mb-8">
-              {[1, 2, 3, 4].map((i) => (
+              {[1, 2, 3, 4, 5].map((i) => (
                 <div
                   key={i}
-                  className={`h-2 w-16 rounded-full transition-colors ${
+                  className={`h-2 w-12 rounded-full transition-colors ${
                     i === step ? 'bg-primary' : 'bg-primary/20'
                   }`}
                 />
@@ -281,6 +302,59 @@ const Onboarding = () => {
                   </div>
                 </div>
                 
+                <div className="space-y-2">
+                  <Label htmlFor="proficiency_level">Your Proficiency Level</Label>
+                  <Select 
+                    onValueChange={(value) => handleSelectChange('proficiency_level', value)}
+                    value={formData.proficiency_level}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your proficiency level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {proficiencyLevels.map(level => (
+                        <SelectItem key={level} value={level}>
+                          {level}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="pt-4 flex justify-between">
+                  <Button variant="outline" onClick={handleBack}>
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button onClick={handleNext}>
+                    Continue
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </OnboardingStep>
+
+            <OnboardingStep 
+              title="Date of Birth" 
+              icon={<Calendar className="h-6 w-6 text-primary" />} 
+              isActive={step === 3}
+            >
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="date_of_birth">Date of Birth</Label>
+                  <Input
+                    id="date_of_birth"
+                    name="date_of_birth"
+                    type="date"
+                    value={formData.date_of_birth}
+                    onChange={handleInputChange}
+                    max={new Date().toISOString().split('T')[0]} // Prevents future dates
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This helps us find suitable language partners for you.
+                  </p>
+                </div>
+                
                 <div className="pt-4 flex justify-between">
                   <Button variant="outline" onClick={handleBack}>
                     <ChevronLeft className="mr-2 h-4 w-4" />
@@ -297,7 +371,7 @@ const Onboarding = () => {
             <OnboardingStep 
               title="Profile Picture" 
               icon={<User className="h-6 w-6 text-primary" />} 
-              isActive={step === 3}
+              isActive={step === 4}
             >
               <div className="space-y-6">
                 <div className="flex flex-col items-center justify-center gap-4">
@@ -348,7 +422,7 @@ const Onboarding = () => {
             <OnboardingStep 
               title="Ready to Start" 
               icon={<CheckCircle className="h-6 w-6 text-primary" />} 
-              isActive={step === 4}
+              isActive={step === 5}
             >
               <div className="space-y-6">
                 <div className="bg-primary/5 rounded-lg p-6 text-center">
@@ -365,7 +439,12 @@ const Onboarding = () => {
                     Back
                   </Button>
                   <Button onClick={handleSubmit} disabled={isLoading}>
-                    {isLoading ? 'Finishing up...' : 'Get Started'}
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Finishing up...
+                      </>
+                    ) : 'Get Started'}
                   </Button>
                 </div>
               </div>

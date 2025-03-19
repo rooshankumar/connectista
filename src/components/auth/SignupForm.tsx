@@ -1,17 +1,19 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 export function SignupForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const { signUp, signInWithGoogle, isLoading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,10 +33,29 @@ export function SignupForm() {
       return;
     }
 
-    const { error } = await signUp(email, password);
-    
-    if (error) {
-      toast.error(error.message);
+    try {
+      const { error } = await signUp(email, password);
+      
+      if (error) {
+        console.error('Signup error:', error);
+        toast.error(error.message || 'Failed to sign up. Please try again.');
+      } else {
+        toast.success('Sign up successful! Please check your email to verify your account.');
+        // In a development environment without email verification, we might want to redirect to onboarding
+        // navigate('/onboarding');
+      }
+    } catch (err) {
+      console.error('Unexpected error during signup:', err);
+      toast.error('An unexpected error occurred. Please try again later.');
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      console.error('Error with Google sign in:', err);
+      toast.error('Failed to sign in with Google. Please try again.');
     }
   };
 
@@ -82,7 +103,12 @@ export function SignupForm() {
           className="w-full h-11 transition-all duration-300"
           disabled={isLoading}
         >
-          {isLoading ? 'Signing up...' : 'Sign up'}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Signing up...
+            </>
+          ) : 'Sign up'}
         </Button>
       </form>
       
@@ -95,7 +121,7 @@ export function SignupForm() {
         type="button"
         variant="outline"
         className="w-full h-11 transition-all duration-300"
-        onClick={signInWithGoogle}
+        onClick={handleGoogleSignIn}
         disabled={isLoading}
       >
         <svg

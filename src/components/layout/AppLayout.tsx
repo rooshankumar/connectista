@@ -20,12 +20,14 @@ export function AppLayout({ children, requireAuth = true }: AppLayoutProps) {
     if (isLoading) return;
     
     if (requireAuth && !isAuthenticated) {
+      console.log('User not authenticated, redirecting to login');
       setIsRedirecting(true);
       navigate('/login');
       return;
     } 
     
     if (isAuthenticated && profile && !profile.onboarding_completed) {
+      console.log('User authenticated but onboarding not completed, redirecting to onboarding');
       setIsRedirecting(true);
       navigate('/onboarding');
       return;
